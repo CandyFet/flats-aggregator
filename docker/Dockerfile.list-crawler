@@ -1,0 +1,33 @@
+# Build the Go Bunary.
+FROM golang:1.18 as build_list-crawler
+ENV CGO_ENABLED 0
+ARG VCS_REF
+
+# Create a location in the container for the source code. Using the
+# default GOPATH location.
+RUN mkdir -p /list-crawler
+
+# Copy the source code into the container.
+WORKDIR /list-crawler
+COPY . .
+
+RUN go mod download
+
+# Build the list-crawler binary. We are doing this last since this will be different
+# every time we run through this process.
+WORKDIR /list-crawler/cmd/crawler
+RUN go build -ldflags "-X main.build=${VCS_REF}"
+
+
+# Run the Go Binary in Alpine.
+FROM alpine:3.12
+ARG BUILD_DATE
+ARG VCS_REF
+COPY --from=build_list-crawler /list-crawler/cmd/crawler/crawler /service/crawler
+WORKDIR /service
+CMD ["./crawler"]
+
+LABEL org.opencontainers.image.created="${BUILD_DATE}" \
+      org.opencontainers.image.title='list-crawler' \
+      org.opencontainers.image.authors="Fedor Zasechkin <inorect.a.z@gmail.com>" \
+      org.opencontainers.image.revision="${VCS_REF}"

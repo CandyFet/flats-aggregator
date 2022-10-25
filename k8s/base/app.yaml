@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: list-crawler
+spec:
+  selector:
+    matchLabels:
+      app: list-crawler
+  template:
+    metadata:
+      labels:
+        app: list-crawler
+    spec:
+      dnsPolicy: ClusterFirstWithHostNet
+      hostNetwork: true
+      containers:
+      - name: zookeeper
+        image: bitnami/zookeeper:latest
+        ports:
+        - name: zookeeper
+          containerPort: 2181
+      - name: kafka
+        image: bitnami/kafka:latest
+        ports:
+        - name: kafka
+          containerPort: 9092
+      - name: app
+        image: list-crawler-amd64:1.0
+        env:
+        - name: KUBERNETES_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: KUBERNETES_PODNAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: KUBERNETES_NAMESPACE_POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: KUBERNETES_NODENAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: list-crawler
+spec:
+  selector:
+    service: list-crawler
+  ports:
+  - name: kafka
+    port: 9092
+    targetPort: kafka
+  - name: zookeeper
+    port: 2181
+    targetPort: zookeeper    

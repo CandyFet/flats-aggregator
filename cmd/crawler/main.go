@@ -39,11 +39,11 @@ type Item struct {
 }
 
 func main() {
-	passedArgs := os.Args[1:]
-	maxDaysUpdated, _ := strconv.Atoi(passedArgs[0])
-	maxPriceAmd, _ := strconv.Atoi(passedArgs[1])
-	maxPriceUsd, _ := strconv.Atoi(passedArgs[2])
-	minRooms, _ := strconv.Atoi(passedArgs[3])
+	// passedArgs := os.Args[1:]
+	// maxDaysUpdated, _ := strconv.Atoi(passedArgs[0])
+	// maxPriceAmd, _ := strconv.Atoi(passedArgs[1])
+	// maxPriceUsd, _ := strconv.Atoi(passedArgs[2])
+	// minRooms, _ := strconv.Atoi(passedArgs[3])
 	fName := "flats.json"
 	file, err := os.Create(fName)
 	if err != nil {
@@ -58,7 +58,7 @@ func main() {
 	detailCollector := c.Clone()
 	phoneCollector := c.Clone()
 	items := make([]Item, 0, 200)
-	amdPriceLowest := 100000
+	// amdPriceLowest := 100000
 
 	// Find and visit all links
 	c.OnHTML("a[href]", func(e *colly.HTMLElement) {
@@ -130,17 +130,19 @@ func main() {
 			}
 		})
 
-		hoursBefore := -1 * maxDaysUpdated * 24
-		timeAgo := time.Now().Add(time.Duration(hoursBefore) * time.Hour)
+		// hoursBefore := -1 * maxDaysUpdated * 24
+		// timeAgo := time.Now().Add(time.Duration(hoursBefore) * time.Hour)
 
-		if item.CreatedAt.After(timeAgo) || (item.UpdatedAt.IsZero() || item.UpdatedAt.After(timeAgo)) {
-			// Check price in AMD and USD
-			if (item.Price > amdPriceLowest && item.Price < maxPriceAmd) || item.Price < maxPriceUsd {
-				if minRooms <= item.RoomsCount {
-					items = append(items, item)
-				}
-			}
-		}
+		// if item.CreatedAt.After(timeAgo) || (item.UpdatedAt.IsZero() || item.UpdatedAt.After(timeAgo)) {
+		// 	// Check price in AMD and USD
+		// 	if (item.Price > amdPriceLowest && item.Price < maxPriceAmd) || item.Price < maxPriceUsd {
+		// 		if minRooms <= item.RoomsCount {
+		// 			items = append(items, item)
+		// 		}
+		// 	}
+		// }
+
+		items = append(items, item)
 
 		phoneCollector.Visit(phoneLink)
 	})
