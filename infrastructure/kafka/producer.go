@@ -30,11 +30,15 @@ func (p producer) SendMessage(topic string, message string) error {
 		Value: sarama.StringEncoder(message),
 	}
 
-	p, o, err := p.producer.SendMessage(msg)
+	prt, ofs, err := p.producer.SendMessage(msg)
+
 	if err != nil {
 		fmt.Println("Error publish: ", err.Error())
+		return err
 	}
 
-	fmt.Println("Partition: ", p)
-	fmt.Println("Offset: ", o)
+	fmt.Println("Partition: ", prt)
+	fmt.Println("Offset: ", ofs)
+
+	return nil
 }
