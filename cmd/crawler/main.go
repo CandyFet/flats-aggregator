@@ -86,7 +86,7 @@ func main() {
 		phoneLink := e.ChildAttr(".phone > a", "onclick")
 		fmt.Printf("phoneLink: %s\n", phoneLink)
 
-		strPrice := e.ChildText(".vih #abar .price")
+		strPrice := e.ChildText(".vih #abar .xprice>span:first-child")
 
 		intPrice, _ := strconv.Atoi(strings.Join(prcRegex.FindAllString(strPrice, -1), ""))
 
