@@ -2,8 +2,3 @@ kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 nodes:
 - role: control-plane
-  extraPortMappings:
-  - containerPort: 2181
-    hostPort: 2191
-  - containerPort: 9092
-    hostPort: 9092

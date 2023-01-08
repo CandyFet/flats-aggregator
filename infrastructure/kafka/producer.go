@@ -2,32 +2,35 @@ package kafka
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/Shopify/sarama"
 )
 
 type Producer interface {
-	SendMessage(topic string, message string) error
+	SendMessage(topic, message, partitionKey string) error
 }
 
 type producer struct {
 	producer sarama.SyncProducer
+	logger   *log.Logger
 }
 
-func NewProducer(kafkaBrokers []string) (Producer, error) {
+func NewProducer(kafkaBrokers []string, logger *log.Logger) (Producer, error) {
 	config := sarama.NewConfig()
 	config.Producer.Partitioner = sarama.NewRandomPartitioner
 	config.Producer.RequiredAcks = sarama.WaitForAll
 	config.Producer.Return.Successes = true
 	kafkaProducer, err := sarama.NewSyncProducer(kafkaBrokers, config)
 
-	return producer{kafkaProducer}, err
+	return producer{kafkaProducer, logger}, err
 }
 
-func (p producer) SendMessage(topic string, message string) error {
+func (p producer) SendMessage(topic, message, partitionKey string) error {
 	msg := &sarama.ProducerMessage{
 		Topic: topic,
 		Value: sarama.StringEncoder(message),
+		Key:   sarama.StringEncoder(partitionKey),
 	}
 
 	prt, ofs, err := p.producer.SendMessage(msg)
@@ -37,8 +40,7 @@ func (p producer) SendMessage(topic string, message string) error {
 		return err
 	}
 
-	fmt.Println("Partition: ", prt)
-	fmt.Println("Offset: ", ofs)
+	p.logger.Printf("message successfully published to topic %s, in partition %d, with offset %d", topic, prt, ofs)
 
 	return nil
 }

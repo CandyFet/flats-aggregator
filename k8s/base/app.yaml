@@ -14,16 +14,6 @@ spec:
       dnsPolicy: ClusterFirstWithHostNet
       hostNetwork: true
       containers:
-      - name: zookeeper
-        image: bitnami/zookeeper:latest
-        ports:
-        - name: zookeeper
-          containerPort: 2181
-      - name: kafka
-        image: bitnami/kafka:latest
-        ports:
-        - name: kafka
-          containerPort: 9092
       - name: app
         image: list-crawler-amd64:1.0
         env:
@@ -43,18 +33,3 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: spec.nodeName
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: list-crawler
-spec:
-  selector:
-    service: list-crawler
-  ports:
-  - name: kafka
-    port: 9092
-    targetPort: kafka
-  - name: zookeeper
-    port: 2181
-    targetPort: zookeeper    

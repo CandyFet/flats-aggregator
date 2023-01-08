@@ -2,7 +2,7 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
+	"list-crawler/infrastructure/kafka"
 	"log"
 	"os"
 	"regexp"
@@ -28,52 +28,45 @@ var monthMap = map[string]string{
 	"Декабрь":  "12",
 }
 
+var bootstrapServers = []string{"kafka.infrastructure.svc.cluster.local:9092"}
+
 type Item struct {
-	Price         int
-	Address       string
-	Link          string
-	RoomsCount    int
-	BathroomCount int
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
+	ExternalID    string    `json:"external_id"`
+	Price         int       `json:"price"`
+	Address       string    `json:"address"`
+	Link          string    `json:"link"`
+	RoomsCount    int       `json:"rooms_count"`
+	BathroomCount int       `json:"bathroom_count"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
 }
 
 func main() {
-	// passedArgs := os.Args[1:]
-	// maxDaysUpdated, _ := strconv.Atoi(passedArgs[0])
-	// maxPriceAmd, _ := strconv.Atoi(passedArgs[1])
-	// maxPriceUsd, _ := strconv.Atoi(passedArgs[2])
-	// minRooms, _ := strconv.Atoi(passedArgs[3])
-	fName := "flats.json"
-	file, err := os.Create(fName)
-	if err != nil {
-		log.Fatalf("Cannot create file %q: %s\n", fName, err)
-		return
+	logger := log.New(os.Stdout, "LIST CRAWLER: ", log.LstdFlags|log.Lmicroseconds|log.Lshortfile)
+	logger.Println("Starting list crawler...")
+	for range time.Tick(1 * time.Minute) {
+		collectInfo(logger)
 	}
-	defer file.Close()
+}
 
+func collectInfo(logger *log.Logger) error {
 	c := colly.NewCollector(
 		colly.AllowedDomains("list.am", "www.list.am"),
 	)
 	detailCollector := c.Clone()
 	phoneCollector := c.Clone()
 	items := make([]Item, 0, 200)
-	// amdPriceLowest := 100000
 
 	// Find and visit all links
 	c.OnHTML("a[href]", func(e *colly.HTMLElement) {
 		link := e.Attr("href")
-		// Print link
 		if strings.HasPrefix(link, "/item") {
-			fmt.Printf("Link found: %q -> %s\n", e.Text, link)
-			// Visit link found on page
-			// Only those links are visited which are in AllowedDomains
 			detailCollector.Visit(e.Request.AbsoluteURL("/ru" + link))
 		}
 	})
 
 	c.OnRequest(func(r *colly.Request) {
-		fmt.Println("Visiting", r.URL)
+		logger.Printf("Visiting url: %s", r.URL)
 	})
 
 	detailCollector.OnHTML(".pmain", func(e *colly.HTMLElement) {
@@ -84,12 +77,15 @@ func main() {
 		var dateUpdated time.Time
 		item := Item{}
 		phoneLink := e.ChildAttr(".phone > a", "onclick")
-		fmt.Printf("phoneLink: %s\n", phoneLink)
+		logger.Printf("phoneLink: %s\n", phoneLink)
 
 		strPrice := e.ChildText(".vih #abar .xprice>span:first-child")
 
 		intPrice, _ := strconv.Atoi(strings.Join(prcRegex.FindAllString(strPrice, -1), ""))
 
+		externalIDinfo := strings.Split(e.ChildText(".vi .footer span"), " ")
+
+		item.ExternalID = externalIDinfo[len(externalIDinfo)-1]
 		item.Price = intPrice
 		item.Link = e.Request.URL.String()
 		item.Address = e.ChildText(".vih #abar .loc a")
@@ -105,7 +101,7 @@ func main() {
 		e.ForEach(".vi > .footer > span", func(_ int, el *colly.HTMLElement) {
 			if crtRegex.MatchString(el.Text) {
 				createdStr := el.Text
-				fmt.Printf("Found creating: %q\n", createdStr)
+				logger.Printf("Found creating: %q\n", createdStr)
 				dateSlice := strings.Split(crtRegex.FindString(createdStr), ".")
 				day, _ := strconv.Atoi(dateSlice[0])
 				month, _ := strconv.Atoi(dateSlice[1])
@@ -117,7 +113,7 @@ func main() {
 			if updRegex.MatchString(el.Text) {
 				updatedStr := el.Text
 				monthRegex, _ := regexp.Compile(` \W+`)
-				fmt.Printf("Found updating: %q\n", updatedStr)
+				logger.Printf("Found updating: %q\n", updatedStr)
 				month, _ := strconv.Atoi(monthMap[strings.TrimSpace(monthRegex.FindString(updatedStr))])
 				datetimeSlice := strings.Split(updRegex.FindString(updatedStr), " ")
 				day, _ := strconv.Atoi(strings.Replace(datetimeSlice[0], ",", "", -1))
@@ -130,34 +126,35 @@ func main() {
 			}
 		})
 
-		// hoursBefore := -1 * maxDaysUpdated * 24
-		// timeAgo := time.Now().Add(time.Duration(hoursBefore) * time.Hour)
-
-		// if item.CreatedAt.After(timeAgo) || (item.UpdatedAt.IsZero() || item.UpdatedAt.After(timeAgo)) {
-		// 	// Check price in AMD and USD
-		// 	if (item.Price > amdPriceLowest && item.Price < maxPriceAmd) || item.Price < maxPriceUsd {
-		// 		if minRooms <= item.RoomsCount {
-		// 			items = append(items, item)
-		// 		}
-		// 	}
-		// }
-
 		items = append(items, item)
 
 		phoneCollector.Visit(phoneLink)
 	})
 
 	phoneCollector.OnHTML("a[href]", func(e *colly.HTMLElement) {
-		fmt.Printf("phone: %s\n", e.Text)
+		logger.Printf("phone: %s\n", e.Text)
 	})
 
 	c.Visit("https://www.list.am/category/56?pfreq=1&n=1&price1=&price2=&crc=-1&_a5=0&_a39=0&_a40=0&_a11_1=&_a11_2=&_a4=0&_a37=0&_a3_1=&_a3_2=&_a38=0")
 
-	enc := json.NewEncoder(file)
-	enc.SetIndent("", "  ")
+	logger.Printf("Total amount of flats found: %d\n", len(items))
 
-	fmt.Printf("Total amount of flats found by passed parameters: %d\n", len(items))
+	producer, err := kafka.NewProducer(bootstrapServers, logger)
 
-	// Dump json to the standard output
-	enc.Encode(items)
+	if err != nil {
+		logger.Printf("producer create error: %s", err)
+
+		return err
+	}
+
+	for _, i := range items {
+		json, err := json.Marshal(i)
+		if err != nil {
+			logger.Printf("json marshal error: %v", err)
+		}
+
+		producer.SendMessage("list-flats", string(json), i.ExternalID)
+	}
+
+	return nil
 }

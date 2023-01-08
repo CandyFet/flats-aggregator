@@ -13,6 +13,8 @@ list-crawler:
 # =================================================================
 # Running from within k8s/dev
 
+kind-up-full: kind-up kind-create-namespaces kind-install-kafka list-crawler kind-load kind-services
+	
 kind-up:
 	kind create cluster --image kindest/node:v1.24.2 --name service-starter-cluster --config k8s/dev/kind-config.yaml
 
@@ -38,6 +40,12 @@ kind-status:
 
 kind-status-full:
 	kubectl describe pod -lapp=list-crawler
+
+kind-install-kafka:
+	helm install kafka bitnami/kafka --namespace infrastructure
+
+kind-create-namespaces:
+	kubectl create namespace infrastructure
 
 # =================================================================
 

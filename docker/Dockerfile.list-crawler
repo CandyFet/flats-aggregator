@@ -15,7 +15,7 @@ RUN go mod download
 
 # Build the list-crawler binary. We are doing this last since this will be different
 # every time we run through this process.
-WORKDIR /list-crawler/cmd/crawler
+WORKDIR /list-crawler/cmd/list-crawler
 RUN go build -ldflags "-X main.build=${VCS_REF}"
 
 
@@ -23,9 +23,9 @@ RUN go build -ldflags "-X main.build=${VCS_REF}"
 FROM alpine:3.12
 ARG BUILD_DATE
 ARG VCS_REF
-COPY --from=build_list-crawler /list-crawler/cmd/crawler/crawler /service/crawler
+COPY --from=build_list-crawler /list-crawler/cmd/list-crawler/list-crawler /service/list-crawler
 WORKDIR /service
-CMD ["./crawler"]
+CMD ["./list-crawler"]
 
 LABEL org.opencontainers.image.created="${BUILD_DATE}" \
       org.opencontainers.image.title='list-crawler' \
